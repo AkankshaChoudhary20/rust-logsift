@@ -73,6 +73,13 @@ pub fn classify_level(line: &str) -> Option<&'static str> {
     None
 }
 
+// The accepted space and T separators represent the same instant. Normalize
+// only that byte while comparing, without allocating for each log line.
+fn compare_timestamps(a: &str, b: &str) -> std::cmp::Ordering {
+    let normalize = |(i, byte)| if i == 10 && byte == b' ' { b'T' } else { byte };
+    a.bytes().enumerate().map(normalize).cmp(b.bytes().enumerate().map(normalize))
+}
+
 /// Returns true if `line` passes all configured filters.
 pub fn matches_filters(line: &str, filters: &Filters) -> bool {
     if let Some(needle) = &filters.contains
@@ -92,12 +99,12 @@ pub fn matches_filters(line: &str, filters: &Filters) -> bool {
             return false;
         };
         if let Some(since) = &filters.since
-            && ts < since.as_str()
+            && compare_timestamps(ts, since) == std::cmp::Ordering::Less
         {
             return false;
         }
         if let Some(until) = &filters.until
-            && ts > until.as_str()
+            && compare_timestamps(ts, until) == std::cmp::Ordering::Greater
         {
             return false;
         }
@@ -144,6 +151,25 @@ mod tests {
             extract_timestamp_prefix("2024-01-01T00:00:00 INFO café 🦀"),
             Some("2024-01-01T00:00:00")
         );
+    }
+
+    #[test]
+    fn mixed_timestamp_separators_share_inclusive_time_bounds() {
+        for line_sep in ["T", " "] {
+            for bound_sep in ["T", " "] {
+                let filters = Filters {
+                    since: Some(format!("2024-01-02{bound_sep}10:00:00")),
+                    until: Some(format!("2024-01-02{bound_sep}12:00:00")),
+                    ..Default::default()
+                };
+                for time in ["10:00:00", "11:00:00", "12:00:00"] {
+                    assert!(matches_filters(&format!("2024-01-02{line_sep}{time} INFO ok"), &filters));
+                }
+                for time in ["09:59:59", "12:00:01"] {
+                    assert!(!matches_filters(&format!("2024-01-02{line_sep}{time} INFO outside"), &filters));
+                }
+            }
+        }
     }
 
     #[test]
