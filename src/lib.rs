@@ -34,7 +34,7 @@ pub fn extract_timestamp_prefix(line: &str) -> Option<&str> {
     if line.len() < 19 {
         return None;
     }
-    let prefix = &line[..19];
+    let prefix = line.get(..19)?;
     let bytes = prefix.as_bytes();
 
     let is_digit = |i: usize| bytes[i].is_ascii_digit();
@@ -125,6 +125,26 @@ pub fn process_line(line: &str, filters: &Filters, summary: &mut Summary) -> boo
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unicode_lines_do_not_panic_during_timestamp_extraction() {
+        for line in [
+            "é".repeat(12),
+            format!("{}érest", "a".repeat(18)),
+            "🦀".repeat(10),
+        ] {
+            assert_eq!(extract_timestamp_prefix(&line), None);
+            let filters = Filters {
+                since: Some("2024-01-01T00:00:00".into()),
+                ..Default::default()
+            };
+            assert!(!matches_filters(&line, &filters));
+        }
+        assert_eq!(
+            extract_timestamp_prefix("2024-01-01T00:00:00 INFO café 🦀"),
+            Some("2024-01-01T00:00:00")
+        );
+    }
 
     #[test]
     fn contains_filter_matches() {
