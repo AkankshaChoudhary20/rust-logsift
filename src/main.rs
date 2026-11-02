@@ -33,7 +33,12 @@ fn parse_args(argv: Vec<String>) -> Result<Args, String> {
             "--until" => filters.until = Some(it.next().ok_or("--until needs a value")?),
             "--summary" => summary = true,
             "-h" | "--help" => return Err("help".to_string()),
-            other if !other.starts_with("--") => file = Some(other.to_string()),
+            other if !other.starts_with("--") => {
+                if file.is_some() {
+                    return Err("only one input file is supported".to_string());
+                }
+                file = Some(other.to_string());
+            }
             other => return Err(format!("unknown flag: {other}")),
         }
     }
