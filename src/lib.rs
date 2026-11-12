@@ -61,9 +61,11 @@ pub fn extract_timestamp_prefix(line: &str) -> Option<&str> {
 }
 
 /// Returns the first known log level token found in `line`, matched as a
-/// whole whitespace-delimited word (so "ERRORS" doesn't match "ERROR").
+/// whole whitespace-delimited word, optionally wrapped in brackets or followed
+/// by a colon (so "ERRORS" does not match "ERROR").
 pub fn classify_level(line: &str) -> Option<&'static str> {
     for word in line.split_whitespace() {
+        let word = word.trim_matches(|c| matches!(c, '[' | ']' | ':'));
         for level in KNOWN_LEVELS {
             if word == level {
                 return Some(level);
