@@ -44,6 +44,13 @@ Matched lines stream to stdout as they're found; the summary (if requested)
 prints to stderr afterward, so you can pipe matched lines elsewhere while
 still seeing the summary in your terminal.
 
+For a repeatable export, pass `-` to read stdin and redirect the two streams
+separately:
+
+```bash
+./target/release/logsift - --contains ERROR --summary < access.log > errors.log 2> summary.txt
+```
+
 ## Tests
 
 ```bash
