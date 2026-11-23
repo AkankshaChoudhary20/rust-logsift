@@ -8,6 +8,7 @@ use logsift::{Filters, Summary, process_line};
 fn print_usage() {
     eprintln!(
         "usage: logsift [FILE] [--contains STR] [--exclude STR] [--since TS] [--until TS] [--summary]\n\n\
+         Use -- FILE for names starting with a dash.\n\n\
          FILE defaults to stdin ('-'). TS must look like YYYY-MM-DDTHH:MM:SS.\n\
          --summary prints total/matched line counts and per-level counts to stderr after processing."
     );
@@ -32,6 +33,15 @@ fn parse_args(argv: Vec<String>) -> Result<Args, String> {
             "--since" => filters.since = Some(it.next().ok_or("--since needs a value")?),
             "--until" => filters.until = Some(it.next().ok_or("--until needs a value")?),
             "--summary" => summary = true,
+            "--" => {
+                if let Some(path) = it.next() {
+                    if file.is_some() || it.next().is_some() {
+                        return Err("only one input file is supported".to_string());
+                    }
+                    file = Some(path);
+                }
+                break;
+            },
             "-h" | "--help" => return Err("help".to_string()),
             other if !other.starts_with("--") => {
                 if file.is_some() {
